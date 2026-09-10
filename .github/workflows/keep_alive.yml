@@ -14,34 +14,47 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: '20'
+          node-version: '22' # Fixed deprecation
 
-      - name: Install Playwright
-        run: npx playwright install chromium --with-deps
+      - name: Install Dependencies
+        run: |
+          npm init -y
+          npm install playwright-chromium
+          npx playwright install chromium --with-deps
 
       - name: Execute Ghost Browser Visit
         run: |
           node -e "
-          const { chromium } = require('playwright');
+          const { chromium } = require('playwright-chromium');
           (async () => {
+            console.log('Launching Ghost Browser...');
             const browser = await chromium.launch({ headless: true });
             const context = await browser.newContext({
-              userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36'
+              userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
             });
             const page = await context.newPage();
-            console.log('Navigating to SS-H API...');
+            
+            const targetUrl = 'https://35b65751-5dd2-41c5-9576-99c02a424b61-00-i88keg9i38gh.pike.replit.dev/pinger';
+            
+            console.log('Navigating to: ' + targetUrl);
             try {
-              await page.goto('https://35b65751-5dd2-41c5-9576-99c02a424b61-00-i88keg9i38gh.pike.replit.dev/pinger', { 
+              const response = await page.goto(targetUrl, { 
                 waitUntil: 'networkidle',
                 timeout: 60000 
               });
-              console.log('Success: Connection Established.');
+              
+              console.log('HTTP Status:', response.status());
               const content = await page.content();
-              if (content.includes('Heartbeat')) {
-                console.log('Verification: API responded correctly.');
+              
+              if (content.includes('Heartbeat') || response.status() === 200) {
+                console.log('SUCCESS: Replit is Awake.');
+              } else {
+                console.log('WARNING: Reached page but signature not found.');
               }
             } catch (err) {
-              console.error('Error during bypass:', err.message);
+              console.error('BYPASS ERROR:', err.message);
+            } finally {
+              await browser.close();
+              console.log('Session Closed.');
             }
-            await browser.close();
           })();"
