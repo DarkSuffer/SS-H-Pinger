@@ -1,17 +1,14 @@
-name: SS-H 24-7 Hard Bypass
+name: Render 24-7 Hard Bypass
 on:
   schedule:
-    - cron: '*/10 * * * *' # Executes every 10 minutes
-  workflow_dispatch: # Manual trigger
+    - cron: '*/10 * * * *'
+  workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js Environment
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: '22'
@@ -22,42 +19,25 @@ jobs:
           npm install playwright-chromium
           npx playwright install chromium --with-deps
 
-      - name: Execute Ghost Browser Visit
+      - name: Execute Visit
         run: |
           node -e "
           const { chromium } = require('playwright-chromium');
           (async () => {
-            console.log('--- STARTING BYPASS SESSION ---');
+            console.log('--- SENDING RENDER KEEP-ALIVE PULSE ---');
             const browser = await chromium.launch({ headless: true });
-            const context = await browser.newContext({
-              userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
-            });
+            const context = await browser.newContext();
             const page = await context.newPage();
             
-            // TARGET URL UPDATED WITH PORT 8080 AS REQUESTED
-            const targetUrl = 'https://35b65751-5dd2-41c5-9576-99c02a424b61-00-i88keg9i38gh.pike.replit.dev:8080/pinger';
-            
-            console.log('Targeting Internal Endpoint: ' + targetUrl);
+            // YOUR LIVE RENDER URL
+            const targetUrl = 'https://ssh-gatekeeper.onrender.com/pinger';
             
             try {
-              const response = await page.goto(targetUrl, { 
-                waitUntil: 'networkidle',
-                timeout: 60000 
-              });
-              
-              console.log('HTTP Status Received:', response.status());
-              const content = await page.content();
-              
-              if (content.includes('Heartbeat') || response.status() === 200) {
-                console.log('SUCCESS: SS-H API reached on Port 8080. Resetting idle timer.');
-              } else {
-                console.log('WARNING: URL reached but API signature not found in response body.');
-              }
+              const response = await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
+              console.log('HTTP Status:', response.status());
             } catch (err) {
-              console.error('CRITICAL BYPASS FAILURE:', err.message);
-              process.exit(1);
+              console.error('Ping Error:', err.message);
             } finally {
               await browser.close();
-              console.log('--- BYPASS SESSION CLOSED ---');
             }
           })();"
