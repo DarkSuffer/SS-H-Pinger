@@ -1,47 +1,64 @@
-name: Render 24-7 Keep-Alive
+name: SS-H 24-7 Render Keep-Alive
 on:
   schedule:
-    - cron: '*/10 * * * *' # Triggers every 10 minutes
-  workflow_dispatch: # Allows manual run button
+    - cron: '*/10 * * * *' # Executes every 10 minutes
+  workflow_dispatch: # Allows manual trigger button in GitHub Actions
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout Code
+      - name: Checkout Repository
         uses: actions/checkout@v4
 
-      - name: Setup Node.js
+      - name: Setup Node.js Environment
         uses: actions/setup-node@v4
         with:
           node-version: '22'
 
-      - name: Install Playwright
+      - name: Install Playwright Engine
         run: |
           npm init -y
           npm install playwright-chromium
           npx playwright install chromium --with-deps
 
-      - name: Send Keep-Alive Pulse
+      - name: Execute Ghost Browser Visit
         run: |
           node -e "
           const { chromium } = require('playwright-chromium');
           (async () => {
-            console.log('--- STARTING KEEP-ALIVE PULSE ---');
+            console.log('--------------------------------------------------');
+            console.log('--- STARTING GHOST BROWSER KEEPALIVE PULSE ---');
+            console.log('--------------------------------------------------');
+            
             const browser = await chromium.launch({ headless: true });
-            const page = await browser.newPage();
+            const context = await browser.newContext({
+              userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36'
+            });
+            const page = await context.newPage();
             
-            // PASTE YOUR ACTUAL RENDER URL HERE
-            const targetUrl = 'https://ss-h-bot.onrender.com';
+            const targetUrl = 'https://ss-h-bot.onrender.com/pinger';
+            console.log('Target Endpoint: ' + targetUrl);
             
-            console.log('Visiting: ' + targetUrl);
             try {
-              const res = await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
-              console.log('Response Status:', res.status());
+              const response = await page.goto(targetUrl, { 
+                waitUntil: 'networkidle',
+                timeout: 60000 
+              });
+              
+              console.log('HTTP Response Status:', response.status());
+              const content = await page.content();
+              
+              if (content.includes('Heartbeat') || response.status() === 200) {
+                console.log('SUCCESS: Render backend is online and active.');
+              } else {
+                console.log('WARNING: Endpoint reached but heartbeat signature was missing.');
+              }
             } catch (err) {
-              console.error('Pulse Failed:', err.message);
+              console.error('CRITICAL PULSE FAILURE:', err.message);
+              process.exit(1);
             } finally {
               await browser.close();
-              console.log('--- PULSE COMPLETED ---');
+              console.log('--- GHOST BROWSER SESSION CLOSED ---');
             }
           })();"
