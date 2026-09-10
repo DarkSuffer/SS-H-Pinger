@@ -30,7 +30,7 @@ jobs:
             const page = await context.newPage();
             
             // YOUR LIVE RENDER URL
-            const targetUrl = 'https://ssh-gatekeeper.onrender.com/pinger';
+            const targetUrl = 'https://ss-h-bot.onrender.com';
             
             try {
               const response = await page.goto(targetUrl, { waitUntil: 'networkidle', timeout: 60000 });
